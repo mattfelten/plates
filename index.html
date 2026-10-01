@@ -107,14 +107,31 @@
     font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
     color: var(--muted); text-align: center; margin-bottom: 12px;
   }
-  #sleeve { display: flex; align-items: center; justify-content: center; min-height: 136px; }
-  #sleeve .rod { width: 34px; height: 10px; background: #39424f; border-radius: 3px; }
-  #sleeve .band { width: 5px; height: 34px; background: #39424f; border-radius: 2px; margin-left: 2px; }
-  #sleeve .plate {
+  .sleeve { display: flex; align-items: center; justify-content: center; min-height: 136px; }
+  .sleeve .rod { width: 34px; height: 10px; background: #39424f; border-radius: 3px; }
+  .sleeve .band { width: 5px; height: 34px; background: #39424f; border-radius: 2px; margin-left: 2px; }
+  .sleeve .plate {
     display: flex; align-items: center; justify-content: center;
     margin-left: 3px; border-radius: 6px;
     font-size: 10px; font-weight: 700;
     box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.22);
+  }
+  .sleeve .plate.out { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.22), 0 0 0 2.5px var(--red); opacity: .85; }
+  .sleeve .plate.in { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.22), 0 0 0 2.5px var(--green); }
+
+  .compare { display: flex; align-items: flex-start; justify-content: center; gap: 4px; }
+  .cmp { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
+  .cmp-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  .cmp-label.after { color: var(--green); }
+  .cmp-arrow { align-self: center; color: var(--muted); font-size: 18px; padding: 0 2px; }
+  .sleeveOuter { width: 100%; display: flex; justify-content: center; overflow: visible; }
+  .sleeveOuter .sleeve { min-height: 0; transform-origin: top center; }
+  .cmp-text {
+    color: var(--muted); font-size: 12px; margin-top: 10px; text-align: center;
+    font-variant-numeric: tabular-nums;
   }
   #plateText {
     text-align: center; color: var(--muted); margin-top: 14px;
@@ -162,15 +179,32 @@
 
   <section class="loadout">
     <div class="subtitle">Each side</div>
-    <div id="sleeve"></div>
-    <div id="plateText"></div>
+    <div id="loadoutSingle">
+      <div class="sleeve" id="sleeve"></div>
+      <div id="plateText"></div>
+    </div>
+    <div id="loadoutCompare" hidden>
+      <div class="compare">
+        <div class="cmp">
+          <div class="cmp-label">On the bar</div>
+          <div class="sleeveOuter" id="outerBefore"><div class="sleeve" id="sleeveBefore"></div></div>
+          <div class="cmp-text" id="textBefore"></div>
+        </div>
+        <div class="cmp-arrow">&rarr;</div>
+        <div class="cmp">
+          <div class="cmp-label after">After</div>
+          <div class="sleeveOuter" id="outerAfter"><div class="sleeve" id="sleeveAfter"></div></div>
+          <div class="cmp-text" id="textAfter"></div>
+        </div>
+      </div>
+    </div>
   </section>
 </main>
 
 <footer>45 lb bar &middot; plates 45 / 25 / 10 / 5 / 2.5 &middot; long-press <b>On bar</b> to resync it</footer>
 
 <script type="module">
-import { BAR, isValid, snap, loadoutPerSide, delta, fmt } from './plates.js';
+import { BAR, PLATES, isValid, snap, loadoutPerSide, planSwap, totalFor, fmt } from './plates.js';
 
 const LS_KEY = '***';
 
@@ -195,16 +229,33 @@ const els = {
   deltaLabel: $('deltaLabel'),
   deltaChips: $('deltaChips'),
   loadedBtn: $('loadedBtn'),
+  loadoutSingle: $('loadoutSingle'),
+  loadoutCompare: $('loadoutCompare'),
   sleeve: $('sleeve'),
   plateText: $('plateText'),
+  outerBefore: $('outerBefore'),
+  sleeveBefore: $('sleeveBefore'),
+  outerAfter: $('outerAfter'),
+  sleeveAfter: $('sleeveAfter'),
+  textBefore: $('textBefore'),
+  textAfter: $('textAfter'),
 };
+
+const byDesc = (a, b) => b - a;
 
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(LS_KEY));
-    if (saved && isValid(saved.target) && isValid(saved.onBar)) return saved;
+    if (saved && isValid(saved.target)) {
+      if (Array.isArray(saved.onBarLayout) && saved.onBarLayout.every((p) => PLATES.includes(p))) {
+        return { onBarLayout: saved.onBarLayout.slice().sort(byDesc), target: saved.target };
+      }
+      if (isValid(saved.onBar)) { // v1 saved the bar as a weight; assume it was greedily loaded
+        return { onBarLayout: loadoutPerSide(saved.onBar), target: saved.target };
+      }
+    }
   } catch {}
-  return { onBar: BAR, target: 135 };
+  return { onBarLayout: loadoutPerSide(135), target: 135 };
 }
 
 const state = load();
@@ -219,6 +270,44 @@ function setTarget(t) {
   render();
 }
 
+const counts = (plates) => {
+  const m = {};
+  for (const p of plates) m[p] = (m[p] || 0) + 1;
+  return m;
+};
+
+function drawSleeve(sleeve, plates, mark = { remove: {}, add: {} }) {
+  sleeve.textContent = '';
+  sleeve.append(el('span', 'rod'), el('span', 'band'));
+  for (const p of plates) {
+    const g = GEOMETRY[p];
+    const plate = el('span', 'plate');
+    plate.style.height = g.h + 'px';
+    plate.style.width = g.w + 'px';
+    plate.style.background = g.color;
+    plate.style.color = g.text;
+    if (g.w >= 14) plate.textContent = fmt(p);
+    if (mark.remove[p] > 0) { plate.classList.add('out'); mark.remove[p]--; }
+    else if (mark.add[p] > 0) { plate.classList.add('in'); mark.add[p]--; }
+    sleeve.append(plate);
+  }
+}
+
+/** Draw a comparison sleeve, scaled down to fit its half-width column. */
+function drawMini(outer, sleeve, plates, mark) {
+  const natural = plates.reduce((s, p) => s + GEOMETRY[p].w + 3, 0) + 44;
+  const scale = Math.min(1, 130 / natural);
+  sleeve.style.transform = `scale(${scale})`;
+  outer.style.height = `${Math.ceil(136 * scale)}px`;
+  drawSleeve(sleeve, plates, mark);
+}
+
+function layoutText(plates) {
+  if (!plates.length) return 'Just the bar';
+  const sum = plates.reduce((a, b) => a + b, 0);
+  return `${plates.map(fmt).join(' + ')} = ${fmt(sum)}`;
+}
+
 function render() {
   if (document.activeElement !== els.input) els.input.value = fmt(state.target);
 
@@ -227,35 +316,33 @@ function render() {
     ? 'just the bar'
     : `${BAR} bar + ${fmt(perSide)} × 2`;
 
-  els.onbar.innerHTML = `On bar <b>${fmt(state.onBar)}</b>`;
+  const onBarWeight = totalFor(state.onBarLayout);
+  els.onbar.innerHTML = `On bar <b>${fmt(onBarWeight)}</b>`;
 
-  const d = delta(state.onBar, state.target);
-  if (d.perSide === 0) {
+  const plan = planSwap(state.onBarLayout, state.target);
+
+  if (plan.perSide === 0) {
     els.deltaSection.hidden = true;
+    els.loadoutSingle.hidden = false;
+    els.loadoutCompare.hidden = true;
+    drawSleeve(els.sleeve, state.onBarLayout);
+    els.plateText.textContent = state.onBarLayout.length
+      ? `${state.onBarLayout.map(fmt).join(' + ')} = ${fmt(perSide)} per side`
+      : 'Empty bar';
   } else {
     els.deltaSection.hidden = false;
-    els.deltaLabel.textContent = `${fmt(state.onBar)} → ${fmt(state.target)}`;
+    els.deltaLabel.textContent = `${fmt(onBarWeight)} → ${fmt(state.target)}`;
     els.deltaChips.textContent = '';
-    for (const p of d.added) els.deltaChips.append(chip('add', `+${fmt(p)}`));
-    for (const p of d.removed) els.deltaChips.append(chip('remove', `−${fmt(p)}`));
-  }
+    for (const p of plan.removed) els.deltaChips.append(chip('remove', `−${fmt(p)}`));
+    for (const p of plan.added) els.deltaChips.append(chip('add', `+${fmt(p)}`));
 
-  const loadout = loadoutPerSide(state.target);
-  els.sleeve.textContent = '';
-  els.sleeve.append(el('span', 'rod'), el('span', 'band'));
-  for (const p of loadout) {
-    const g = GEOMETRY[p];
-    const plate = el('span', 'plate');
-    plate.style.height = g.h + 'px';
-    plate.style.width = g.w + 'px';
-    plate.style.background = g.color;
-    plate.style.color = g.text;
-    if (g.w >= 14) plate.textContent = fmt(p);
-    els.sleeve.append(plate);
+    els.loadoutSingle.hidden = true;
+    els.loadoutCompare.hidden = false;
+    drawMini(els.outerBefore, els.sleeveBefore, state.onBarLayout, { remove: counts(plan.removed), add: {} });
+    drawMini(els.outerAfter, els.sleeveAfter, plan.result, { remove: {}, add: counts(plan.added) });
+    els.textBefore.textContent = layoutText(state.onBarLayout);
+    els.textAfter.textContent = layoutText(plan.result);
   }
-  els.plateText.textContent = loadout.length
-    ? `${loadout.map(fmt).join(' + ')} = ${fmt(perSide)} per side`
-    : 'Empty bar';
 
   for (const btn of els.presets.children) {
     btn.classList.toggle('current', Number(btn.dataset.preset) === state.target);
@@ -277,7 +364,7 @@ els.input.addEventListener('blur', () => setTarget(parseFloat(els.input.value)))
 els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') els.input.blur(); });
 
 els.loadedBtn.addEventListener('click', () => {
-  state.onBar = state.target;
+  state.onBarLayout = planSwap(state.onBarLayout, state.target).result;
   save();
   render();
 });
@@ -287,7 +374,7 @@ els.loadedBtn.addEventListener('click', () => {
 let pressTimer;
 els.onbar.addEventListener('pointerdown', () => {
   pressTimer = setTimeout(() => {
-    state.onBar = state.target;
+    state.onBarLayout = loadoutPerSide(state.target);
     save();
     render();
   }, 600);

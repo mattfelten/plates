@@ -12,11 +12,16 @@ on each side, and (when the bar is already loaded) what to **add or remove**.
 
 1. The big number is the weight you want. Steppers do ±5/±10/±25, or tap it
    and type (snaps to the nearest loadable weight).
-2. Green/red chips = what to add/remove **per side** relative to what the app
-   thinks is currently on the bar.
-3. **Loaded it ✓** marks the bar as matching the target.
-4. If the app's idea of the bar is stale (someone else changed plates),
-   long-press the **On bar** pill to resync it to the current target.
+2. When that differs from what's on the bar, you get a **swap plan**: red
+   chips for plates to pull, green for plates to slide on — computed to move
+   the fewest plates. Going 185 → 180 says "−25, +10 +10 +2.5 per side"
+   because a `[45, 25]` bar has no 2.5 to remove. Below the chips, the
+   **On the bar → After** pictures show both layouts with the swapped plates
+   outlined.
+3. The app tracks the bar as an actual plate layout (not just a number),
+   so each plan assumes you followed the previous one. **Loaded it ✓**
+   confirms it; long-press the **On bar** pill resyncs to the target if
+   someone else touched the bar.
 
 ## Install on your phone
 

@@ -28,18 +28,24 @@ export function snap(target) {
   return Math.max(BAR, BAR + Math.round((target - BAR) / STEP) * STEP);
 }
 
-/** Greedy fewest-plates load for `perSide` pounds on one sleeve. */
-export function platesForPerSide(perSide) {
-  let rest = half(perSide);
+/** Greedy fill of `h` half-pounds with the plate set. */
+function takeHalf(h) {
   const out = [];
   for (const plate of PLATES) {
     const ph = half(plate);
-    while (rest >= ph) {
+    while (h >= ph) {
       out.push(plate);
-      rest -= ph;
+      h -= ph;
     }
   }
-  return out; // rest hits 0 for any multiple of 2.5
+  return out; // h hits 0 for any non-negative integer (smallest plate = 1 half... see note)
+  // Note: smallest plate is 2.5 lb = 5 half-pounds, so this is exact whenever
+  // h is a multiple of 5 — which it always is for valid weights.
+}
+
+/** Greedy fewest-plates load for `perSide` pounds on one sleeve. */
+export function platesForPerSide(perSide) {
+  return takeHalf(half(perSide));
 }
 
 /** Full per-side loadout for a valid total; null for an impossible target. */
@@ -52,18 +58,59 @@ export function totalFor(plates) {
   return BAR + 2 * plates.reduce((sum, p) => sum + p, 0);
 }
 
+const desc = (a, b) => b - a;
+
 /**
- * The move from `current` to `target` — weight-based, not layout-based.
- * Even when the physical bar is stacked with smaller plates than the greedy
- * layout would use, "add 2.5 per side" is still the right instruction.
+ * Plan the swap from the bar's ACTUAL per-side layout `current` to `target`.
+ *
+ * Weight-only deltas lie at the bar: going 185 -> 180 means "remove 2.5 per
+ * side", but a [45, 25] bar has no 2.5 to remove. So we enumerate which
+ * plates to pull off (all subsets of what's on the bar) and greedily fill
+ * whatever must be added back, minimizing total plates handled — then ties
+ * go to touching fewer of the plates already on.
+ *
+ * Returns { perSide, removed, added, result }: the signed per-side change,
+ * what to pull, what to slide on, and the resulting layout (sorted desc).
  */
-export function delta(current, target) {
-  const perSide = (target - current) / 2;
-  const plates = perSide === 0 ? [] : platesForPerSide(Math.abs(perSide));
+export function planSwap(current, target) {
+  if (!isValid(target)) return null;
+  const curHalf = current.reduce((s, p) => s + half(p), 0);
+  const diffHalf = half((target - BAR) / 2) - curHalf; // signed, per side
+  if (diffHalf === 0) {
+    return { perSide: 0, removed: [], added: [], result: [...current].sort(desc) };
+  }
+
+  const n = current.length;
+  const plateHalf = current.map(half);
+  let best = null;
+  for (let mask = 0; mask < 1 << n; mask++) {
+    let pullHalf = 0;
+    let pullCount = 0;
+    for (let i = 0; i < n; i++) {
+      if ((mask >> i) & 1) {
+        pullHalf += plateHalf[i];
+        pullCount++;
+      }
+    }
+    const addHalf = diffHalf + pullHalf; // must be >= 0
+    if (addHalf < 0) continue;
+    const added = takeHalf(addHalf);
+    const cost = pullCount + added.length;
+    if (!best || cost < best.cost || (cost === best.cost && pullHalf < best.pullHalf)) {
+      best = { mask, cost, pullHalf, added };
+    }
+  }
+
+  const removed = [];
+  const kept = [];
+  for (let i = 0; i < n; i++) {
+    ((best.mask >> i) & 1 ? removed : kept).push(current[i]);
+  }
   return {
-    perSide,
-    added: perSide > 0 ? plates : [],
-    removed: perSide < 0 ? plates : [],
+    perSide: diffHalf / 2,
+    removed: removed.sort(desc),
+    added: best.added,
+    result: [...kept, ...best.added].sort(desc),
   };
 }
 
