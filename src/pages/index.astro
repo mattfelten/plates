@@ -81,9 +81,9 @@
   section[hidden] { display: none; }
 
   .target { display: flex; flex-direction: column; align-items: center; }
-  .weight { display: flex; align-items: baseline; gap: 8px; }
+  .weight { display: flex; align-items: baseline; gap: 8px; position: relative; }
   #targetInput {
-    width: 4.2ch;
+    min-width: 1ch;
     font: inherit; font-size: 76px; font-weight: 700; text-align: center;
     font-variant-numeric: tabular-nums;
     background: transparent; border: none; outline: none; color: var(--text);
@@ -94,6 +94,16 @@
   #targetInput::-webkit-outer-spin-button,
   #targetInput::-webkit-inner-spin-button { -webkit-appearance: none; }
   .unit { font-size: 20px; color: var(--muted); }
+  /* invisible twin that measures the input's text so the field grows/shrinks
+     with the digits and "lb" sits right against them */
+  #targetMeasure {
+    position: absolute;
+    visibility: hidden;
+    white-space: pre;
+    font: inherit; font-size: 76px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
 
   .steppers { display: flex; gap: 8px; margin-top: 16px; width: 100%; }
   button {
@@ -203,6 +213,7 @@
   <section class="target">
     <div class="weight">
       <input id="targetInput" inputmode="numeric" autocomplete="off" aria-label="Target weight in pounds">
+      <span id="targetMeasure" aria-hidden="true"></span>
       <span class="unit">lb</span>
     </div>
     <div class="steppers" id="steppers">
@@ -280,6 +291,7 @@ const els = {
   settings: $('settingsPanel'),
   barPick: $('barPick'),
   input: $('targetInput'),
+  measure: $('targetMeasure'),
   steppers: $('steppers'),
   presets: $('presets'),
   deltaSection: $('deltaSection'),
@@ -379,8 +391,15 @@ function layoutText(plates) {
   return `${fmt(plates.reduce((a, b) => a + b, 0))} lb`;
 }
 
+/** Grow/shrink the input to its content; +1px absorbs subpixel rounding. */
+function sizeInput() {
+  els.measure.textContent = els.input.value || '0';
+  els.input.style.width = `${Math.ceil(els.measure.getBoundingClientRect().width) + 1}px`;
+}
+
 function render() {
   if (document.activeElement !== els.input) els.input.value = fmt(state.target);
+  sizeInput();
 
   const onBarWeight = totalFor(state.onBarLayout);
   els.onbar.innerHTML = `On bar <b>${fmt(onBarWeight)}</b>`;
@@ -461,6 +480,7 @@ els.modeToggle.addEventListener('click', (e) => {
   }
 });
 
+els.input.addEventListener('input', sizeInput);
 els.input.addEventListener('change', () => setTarget(parseFloat(els.input.value)));
 els.input.addEventListener('blur', () => setTarget(parseFloat(els.input.value)));
 els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') els.input.blur(); });
