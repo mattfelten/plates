@@ -26,6 +26,7 @@
     --green: #3fb950;
     --red: #f85149;
     --accent: #2f81f7;
+    --control-h: 34px; /* shared height for the header pill + gear */
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { -webkit-text-size-adjust: 100%; }
@@ -53,11 +54,12 @@
     background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
     padding: 7px 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums;
   }
-  header .pill { flex: none; min-height: 0; }
+  header .pill { flex: none; min-height: 0; height: var(--control-h); }
   .pill b { color: var(--text); font-weight: 700; }
   .head-right { display: flex; align-items: center; gap: 8px; }
   .gear {
-    flex: none; width: 40px; min-height: 0; padding: 0;
+    flex: none; width: var(--control-h); height: var(--control-h);
+    min-height: 0; padding: 0;
     display: flex; align-items: center; justify-content: center;
     background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
   }
@@ -66,8 +68,33 @@
     stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
   }
   .gear.active svg { stroke: var(--text); }
+  .gear-wrap { position: relative; }
 
-  .settings { display: flex; flex-direction: column; gap: 16px; }
+  .settings {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 20;
+    min-width: 264px;
+    max-width: calc(100vw - 40px);
+    display: flex; flex-direction: column; gap: 16px;
+    background: #1a212d;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.4);
+  }
+  .settings[hidden] { display: none; }
+  .settings::before {
+    content: '';
+    position: absolute;
+    top: -5px; right: 14px;
+    width: 8px; height: 8px;
+    background: #1a212d;
+    border-left: 1px solid var(--line);
+    border-top: 1px solid var(--line);
+    transform: rotate(45deg);
+  }
   .setting-label {
     font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
     color: var(--muted); margin-bottom: 8px;
@@ -186,30 +213,32 @@
   <h1>Plates</h1>
   <div class="head-right">
     <button class="pill" id="onbar">On bar <b>45</b></button>
-    <button class="gear" id="gear" aria-label="Settings" aria-expanded="false">
+    <div class="gear-wrap">
+      <button class="gear" id="gear" aria-label="Settings" aria-expanded="false" aria-controls="settingsPanel">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    </button>
+      </button>
+
+      <div class="settings" id="settingsPanel" hidden>
+        <div>
+          <div class="setting-label">Bar weight (lb)</div>
+          <div class="barPick" id="barPick">
+            <button data-bar="45">45</button>
+            <button data-bar="35">35</button>
+            <button data-bar="25">25</button>
+            <button data-bar="15">15</button>
+          </div>
+        </div>
+        <div>
+          <div class="setting-label">Plates per side (lb)</div>
+          <div class="setting-static">45 / 25 / 10 / 5 / 2.5</div>
+        </div>
+        <div class="setting-hint">Long-press the <b>On bar</b> pill to resync it when the app's memory of the bar goes stale.</div>
+      </div>
+    </div>
   </div>
 </header>
 
 <main style="display:flex; flex-direction:column; gap:14px;">
-  <section class="settings" id="settingsPanel" hidden>
-    <div>
-      <div class="setting-label">Bar weight (lb)</div>
-      <div class="barPick" id="barPick">
-        <button data-bar="45">45</button>
-        <button data-bar="35">35</button>
-        <button data-bar="25">25</button>
-        <button data-bar="15">15</button>
-      </div>
-    </div>
-    <div>
-      <div class="setting-label">Plates per side (lb)</div>
-      <div class="setting-static">45 / 25 / 10 / 5 / 2.5</div>
-    </div>
-    <div class="setting-hint">Long-press the <b>On bar</b> pill to resync it when the app's memory of the bar goes stale.</div>
-  </section>
-
   <section class="target">
     <div class="weight">
       <input id="targetInput" inputmode="numeric" autocomplete="off" aria-label="Target weight in pounds">
@@ -456,10 +485,20 @@ els.presets.addEventListener('click', (e) => {
   if (preset) setTarget(Number(preset));
 });
 
-els.gear.addEventListener('click', () => {
-  els.settings.hidden = !els.settings.hidden;
-  els.gear.classList.toggle('active', !els.settings.hidden);
-  els.gear.setAttribute('aria-expanded', String(!els.settings.hidden));
+function setSettingsOpen(open) {
+  els.settings.hidden = !open;
+  els.gear.classList.toggle('active', open);
+  els.gear.setAttribute('aria-expanded', String(open));
+}
+
+els.gear.addEventListener('click', () => setSettingsOpen(els.settings.hidden));
+
+// Dismiss the dropdown on outside tap or Escape, like a real menu.
+document.addEventListener('click', (e) => {
+  if (!els.settings.hidden && !e.target.closest('.gear-wrap')) setSettingsOpen(false);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !els.settings.hidden) setSettingsOpen(false);
 });
 
 els.barPick.addEventListener('click', (e) => {
