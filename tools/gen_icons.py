@@ -28,11 +28,11 @@ def render(size, path):
     cy = 0.52
     bar_h = 0.07
 
-    # (width, height, color) as fractions of S — big blue 45, green 25, red 2.5
+    # (width, height, color) as fractions of S — big blue 45, green 25, purple 2.5
     spec = [
         (0.16, 0.52, '#1d4ed8'),
         (0.13, 0.40, '#15803d'),
-        (0.10, 0.28, '#b91c1c'),
+        (0.10, 0.28, '#8b5cf6'),
     ]
     gap = 0.02
     total_w = sum(w for w, _, _ in spec) + gap * (len(spec) - 1)

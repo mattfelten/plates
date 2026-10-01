@@ -99,7 +99,7 @@
   .perSideNote { color: var(--muted); font-size: 13px; align-self: flex-start; }
   #loadedBtn {
     background: var(--green); color: #05230f; border: none;
-    font-size: 17px; font-weight: 700; width: 100%;
+    font-size: 17px; font-weight: 700; width: 100%; min-height: 56px;
   }
   #loadedBtn:active { background: #46c257; }
 
@@ -116,8 +116,7 @@
     font-size: 10px; font-weight: 700;
     box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.22);
   }
-  .sleeve .plate.out { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.22), 0 0 0 2.5px var(--red); opacity: .85; }
-  .sleeve .plate.in { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.22), 0 0 0 2.5px var(--green); }
+  .sleeve .plate.out { opacity: .9; }
 
   .compare { display: flex; align-items: flex-start; justify-content: center; gap: 4px; }
   .cmp { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; }
@@ -174,7 +173,6 @@
     <div class="delta-label" id="deltaLabel"></div>
     <div class="chips" id="deltaChips"></div>
     <span class="perSideNote">per side</span>
-    <button id="loadedBtn">Loaded it &check;</button>
   </section>
 
   <section class="loadout">
@@ -199,6 +197,8 @@
       </div>
     </div>
   </section>
+
+  <button id="loadedBtn" hidden>Loaded it &check;</button>
 </main>
 
 <footer>45 lb bar &middot; plates 45 / 25 / 10 / 5 / 2.5 &middot; long-press <b>On bar</b> to resync it</footer>
@@ -215,7 +215,7 @@ const GEOMETRY = {
   25:  { h: 100, w: 24, color: '#15803d', text: '#fff' },
   10:  { h: 82,  w: 18, color: '#4b5563', text: '#fff' },
   5:   { h: 64,  w: 14, color: '#e5e7eb', text: '#111' },
-  2.5: { h: 48,  w: 11, color: '#b91c1c', text: '#fff' },
+  2.5: { h: 48,  w: 11, color: '#8b5cf6', text: '#fff' },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -276,7 +276,7 @@ const counts = (plates) => {
   return m;
 };
 
-function drawSleeve(sleeve, plates, mark = { remove: {}, add: {} }) {
+function drawSleeve(sleeve, plates, mark = { remove: {} }) {
   sleeve.textContent = '';
   sleeve.append(el('span', 'rod'), el('span', 'band'));
   for (const p of plates) {
@@ -287,14 +287,18 @@ function drawSleeve(sleeve, plates, mark = { remove: {}, add: {} }) {
     plate.style.background = g.color;
     plate.style.color = g.text;
     if (g.w >= 14) plate.textContent = fmt(p);
-    if (mark.remove[p] > 0) { plate.classList.add('out'); mark.remove[p]--; }
-    else if (mark.add[p] > 0) { plate.classList.add('in'); mark.add[p]--; }
+    if (mark.remove[p] > 0) {
+      mark.remove[p]--;
+      plate.classList.add('out');
+      plate.style.background = '#f85149';
+      plate.style.color = '#fff';
+    }
     sleeve.append(plate);
   }
 }
 
 /** Draw a comparison sleeve, scaled down to fit its half-width column. */
-function drawMini(outer, sleeve, plates, mark) {
+function drawMini(outer, sleeve, plates, mark = { remove: {} }) {
   const natural = plates.reduce((s, p) => s + GEOMETRY[p].w + 3, 0) + 44;
   const scale = Math.min(1, 130 / natural);
   sleeve.style.transform = `scale(${scale})`;
@@ -320,6 +324,7 @@ function render() {
   els.onbar.innerHTML = `On bar <b>${fmt(onBarWeight)}</b>`;
 
   const plan = planSwap(state.onBarLayout, state.target);
+  els.loadedBtn.hidden = plan.perSide === 0;
 
   if (plan.perSide === 0) {
     els.deltaSection.hidden = true;
@@ -338,8 +343,8 @@ function render() {
 
     els.loadoutSingle.hidden = true;
     els.loadoutCompare.hidden = false;
-    drawMini(els.outerBefore, els.sleeveBefore, state.onBarLayout, { remove: counts(plan.removed), add: {} });
-    drawMini(els.outerAfter, els.sleeveAfter, plan.result, { remove: {}, add: counts(plan.added) });
+    drawMini(els.outerBefore, els.sleeveBefore, state.onBarLayout, { remove: counts(plan.removed) });
+    drawMini(els.outerAfter, els.sleeveAfter, plan.result);
     els.textBefore.textContent = layoutText(state.onBarLayout);
     els.textAfter.textContent = layoutText(plan.result);
   }

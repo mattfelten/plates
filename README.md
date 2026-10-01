@@ -16,8 +16,8 @@ on each side, and (when the bar is already loaded) what to **add or remove**.
    chips for plates to pull, green for plates to slide on — computed to move
    the fewest plates. Going 185 → 180 says "−25, +10 +10 +2.5 per side"
    because a `[45, 25]` bar has no 2.5 to remove. Below the chips, the
-   **On the bar → After** pictures show both layouts with the swapped plates
-   outlined.
+   **On the bar → After** pictures show both layouts — plates to pull are
+   drawn solid red; the comparison alone shows what's new.
 3. The app tracks the bar as an actual plate layout (not just a number),
    so each plan assumes you followed the previous one. **Loaded it ✓**
    confirms it; long-press the **On bar** pill resyncs to the target if

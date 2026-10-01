@@ -1,6 +1,6 @@
 // Plates service worker — precache everything, cache-first reads.
 // Bump CACHE when any asset changes so old caches are evicted on activate.
-const CACHE = 'plates-v2';
+const CACHE = 'plates-v3';
 const ASSETS = [
   './',
   './index.html',
