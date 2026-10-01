@@ -48,6 +48,7 @@
     background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
     padding: 7px 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums;
   }
+  header .pill { flex: none; min-height: 0; }
   .pill b { color: var(--text); font-weight: 700; }
   section { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
   section[hidden] { display: none; }
@@ -125,7 +126,7 @@
 <body>
 <header>
   <h1>Plates</h1>
-  <button class="pill" id="onbar" style="min-height:0; font:inherit;">On bar <b>45</b></button>
+  <button class="pill" id="onbar">On bar <b>45</b></button>
 </header>
 
 <main style="display:flex; flex-direction:column; gap:14px;">
