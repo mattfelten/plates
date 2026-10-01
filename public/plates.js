@@ -3,7 +3,22 @@
 // 2.5 lb plates never hit float rounding. Keep this file DOM-free: it is
 // the porting contract for a future native app.
 
-export const BAR = 45;
+// Bar weight is configurable (the gym's technique bars live here too).
+// Multiples of 5 keep the STEP invariant: every bar + (2 × 2.5) step lands
+// on the same 5 lb grid.
+export const BAR_OPTIONS = [45, 35, 25, 15];
+const DEFAULT_BAR = 45;
+let bar = DEFAULT_BAR;
+
+export function getBar() {
+  return bar;
+}
+
+/** Set the bar weight; unknown weights fall back to the 45 lb default. */
+export function setBar(weight) {
+  bar = BAR_OPTIONS.includes(weight) ? weight : DEFAULT_BAR;
+  return bar;
+}
 
 // Plate inventory, largest first. Assumes plenty of each. No 35s.
 export const PLATES = [45, 25, 10, 5, 2.5];
@@ -17,15 +32,15 @@ const half = (w) => Math.round(w * 2); // lb -> half-pounds (integer)
 export function isValid(target) {
   return (
     Number.isFinite(target) &&
-    target >= BAR &&
-    (half(target) - half(BAR)) % half(STEP) === 0
+    target >= bar &&
+    (half(target) - half(bar)) % half(STEP) === 0
   );
 }
 
 /** Nearest loadable weight (never below the bar). */
 export function snap(target) {
-  if (!Number.isFinite(target)) return BAR;
-  return Math.max(BAR, BAR + Math.round((target - BAR) / STEP) * STEP);
+  if (!Number.isFinite(target)) return bar;
+  return Math.max(bar, bar + Math.round((target - bar) / STEP) * STEP);
 }
 
 /** Greedy fill of `h` half-pounds with the plate set. Exact whenever h is
@@ -50,12 +65,12 @@ export function platesForPerSide(perSide) {
 
 /** Full per-side loadout for a valid total; null for an impossible target. */
 export function loadoutPerSide(target) {
-  return isValid(target) ? platesForPerSide((target - BAR) / 2) : null;
+  return isValid(target) ? platesForPerSide((target - bar) / 2) : null;
 }
 
 /** Total weight of the bar plus `plates` on each side. */
 export function totalFor(plates) {
-  return BAR + 2 * plates.reduce((sum, p) => sum + p, 0);
+  return bar + 2 * plates.reduce((sum, p) => sum + p, 0);
 }
 
 const desc = (a, b) => b - a;
@@ -91,7 +106,7 @@ function minus(a, b) {
 export function planSwap(current, target, mode = 'clean') {
   if (!isValid(target)) return null;
   const targetLayout = loadoutPerSide(target);
-  const perSide = (target - BAR) / 2 - current.reduce((s, p) => s + p, 0);
+  const perSide = (target - bar) / 2 - current.reduce((s, p) => s + p, 0);
 
   if (mode !== 'quick') {
     return {

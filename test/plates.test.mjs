@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  BAR, PLATES, STEP,
+  getBar, setBar, PLATES, STEP,
   isValid, snap, platesForPerSide, loadoutPerSide, totalFor, planSwap, fmt,
 } from '../public/plates.js';
 
@@ -97,7 +97,7 @@ test('no-op and invalid targets', () => {
 });
 
 test('every valid weight up to 1000 round-trips exactly', () => {
-  for (let t = BAR; t <= 1000; t += STEP) {
+  for (let t = getBar(); t <= 1000; t += STEP) {
     const loadout = loadoutPerSide(t);
     assert.ok(loadout, `unexpectedly invalid: ${t}`);
     assert.equal(totalFor(loadout), t, `round-trip failed at ${t}`);
@@ -141,6 +141,31 @@ test('plan walk — both modes hit the target, move only real plates', () => {
       layout = p.result;
     }
   }
+});
+
+test('configurable bar weight', (t) => {
+  t.after(() => setBar(45));
+  setBar(35);
+  assert.equal(getBar(), 35);
+  assert.equal(totalFor([]), 35); // bare 35 bar
+  assert.equal(isValid(40), true); // bar + one 2.5 per side
+  assert.deepEqual(loadoutPerSide(105), [25, 10]); // (105 - 35) / 2 = 35
+
+  const p = planSwap([], 105);
+  assert.deepEqual(p.added, [25, 10]);
+
+  const back = planSwap([25, 10], 35); // strip to bare bar
+  assert.deepEqual(back.removed, [25, 10]);
+  assert.deepEqual(back.added, []);
+
+  setBar(45);
+  assert.equal(isValid(40), false); // 40 was only loadable on the 35 bar
+});
+
+test('setBar rejects unknown weights', () => {
+  assert.equal(setBar(38), 45);
+  assert.equal(setBar(10), 45);
+  assert.equal(getBar(), 45);
 });
 
 test('snap finds the nearest loadable weight', () => {

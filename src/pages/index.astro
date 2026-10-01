@@ -55,6 +55,28 @@
   }
   header .pill { flex: none; min-height: 0; }
   .pill b { color: var(--text); font-weight: 700; }
+  .head-right { display: flex; align-items: center; gap: 8px; }
+  .gear {
+    flex: none; width: 40px; min-height: 0; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  }
+  .gear svg {
+    width: 19px; height: 19px; fill: none; stroke: var(--muted);
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  }
+  .gear.active svg { stroke: var(--text); }
+
+  .settings { display: flex; flex-direction: column; gap: 16px; }
+  .setting-label {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .barPick { display: flex; gap: 4px; background: #0f1420; border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+  .barPick button { min-height: 40px; font-size: 15px; background: transparent; border: none; color: var(--muted); border-radius: 9px; }
+  .barPick button.active { background: #2a3444; color: var(--text); }
+  .setting-static { font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
+  .setting-hint { font-size: 13px; color: var(--muted); line-height: 1.5; }
   section { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
   section[hidden] { display: none; }
 
@@ -147,16 +169,37 @@
     color: var(--muted); font-size: 12px; margin-top: 10px; text-align: center;
     font-variant-numeric: tabular-nums;
   }
-  footer { text-align: center; color: #576272; font-size: 12px; padding: 2px 0 6px; }
 </style>
 </head>
 <body>
 <header>
   <h1>Plates</h1>
-  <button class="pill" id="onbar">On bar <b>45</b></button>
+  <div class="head-right">
+    <button class="pill" id="onbar">On bar <b>45</b></button>
+    <button class="gear" id="gear" aria-label="Settings" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
 </header>
 
 <main style="display:flex; flex-direction:column; gap:14px;">
+  <section class="settings" id="settingsPanel" hidden>
+    <div>
+      <div class="setting-label">Bar weight (lb)</div>
+      <div class="barPick" id="barPick">
+        <button data-bar="45">45</button>
+        <button data-bar="35">35</button>
+        <button data-bar="25">25</button>
+        <button data-bar="15">15</button>
+      </div>
+    </div>
+    <div>
+      <div class="setting-label">Plates per side (lb)</div>
+      <div class="setting-static">45 / 25 / 10 / 5 / 2.5</div>
+    </div>
+    <div class="setting-hint">Long-press the <b>On bar</b> pill to resync it when the app's memory of the bar goes stale.</div>
+  </section>
+
   <section class="target">
     <div class="weight">
       <input id="targetInput" inputmode="numeric" autocomplete="off" aria-label="Target weight in pounds">
@@ -214,10 +257,8 @@
   <button id="loadedBtn" hidden>Loaded it &check;</button>
 </main>
 
-<footer>45 lb bar &middot; plates 45 / 25 / 10 / 5 / 2.5 &middot; long-press <b>On bar</b> to resync it</footer>
-
 <script is:inline type="module">
-import { BAR, PLATES, isValid, snap, loadoutPerSide, planSwap, totalFor, fmt } from './plates.js';
+import { getBar, setBar, PLATES, isValid, snap, loadoutPerSide, planSwap, totalFor, fmt } from './plates.js';
 
 const LS_KEY = '***';
 
@@ -235,6 +276,9 @@ const GEOMETRY = {
 const $ = (id) => document.getElementById(id);
 const els = {
   onbar: $('onbar'),
+  gear: $('gear'),
+  settings: $('settingsPanel'),
+  barPick: $('barPick'),
   input: $('targetInput'),
   steppers: $('steppers'),
   presets: $('presets'),
@@ -257,25 +301,28 @@ const els = {
 const byDesc = (a, b) => b - a;
 
 function load() {
-  const seeded = { onBarLayout: loadoutPerSide(135), target: 135, mode: 'clean' };
+  let saved = null;
   try {
-    const saved = JSON.parse(localStorage.getItem(LS_KEY));
-    if (saved && isValid(saved.target)) {
-      let onBarLayout = null;
-      if (Array.isArray(saved.onBarLayout) && saved.onBarLayout.every((p) => PLATES.includes(p))) {
-        onBarLayout = saved.onBarLayout.slice().sort(byDesc);
-      } else if (isValid(saved.onBar)) { // v1 saved the bar as a weight; assume it was greedily loaded
-        onBarLayout = loadoutPerSide(saved.onBar);
-      }
-      if (onBarLayout) {
-        return {
-          onBarLayout,
-          target: saved.target,
-          mode: saved.mode === 'quick' ? 'quick' : 'clean',
-        };
-      }
-    }
+    saved = JSON.parse(localStorage.getItem(LS_KEY));
   } catch {}
+  const bar = setBar(saved?.bar ?? 45); // must precede isValid/snap below
+  const seeded = { bar, onBarLayout: loadoutPerSide(135), target: 135, mode: 'clean' };
+  if (saved && isValid(saved.target)) {
+    let onBarLayout = null;
+    if (Array.isArray(saved.onBarLayout) && saved.onBarLayout.every((p) => PLATES.includes(p))) {
+      onBarLayout = saved.onBarLayout.slice().sort(byDesc);
+    } else if (isValid(saved.onBar)) { // v1 saved the bar as a weight; assume it was greedily loaded
+      onBarLayout = loadoutPerSide(saved.onBar);
+    }
+    if (onBarLayout) {
+      return {
+        bar,
+        onBarLayout,
+        target: saved.target,
+        mode: saved.mode === 'quick' ? 'quick' : 'clean',
+      };
+    }
+  }
   return seeded;
 }
 
@@ -286,7 +333,7 @@ const el = (tag, cls) => { const n = document.createElement(tag); n.className = 
 function chip(kind, label) { const c = el('span', `chip ${kind}`); c.textContent = label; return c; }
 
 function setTarget(t) {
-  state.target = Math.max(BAR, snap(t));
+  state.target = snap(t);
   save();
   render();
 }
@@ -375,6 +422,9 @@ function render() {
   for (const btn of els.presets.children) {
     btn.classList.toggle('current', Number(btn.dataset.preset) === state.target);
   }
+  for (const btn of els.barPick.children) {
+    btn.classList.toggle('active', Number(btn.dataset.bar) === getBar());
+  }
 }
 
 els.steppers.addEventListener('click', (e) => {
@@ -385,6 +435,21 @@ els.steppers.addEventListener('click', (e) => {
 els.presets.addEventListener('click', (e) => {
   const preset = e.target.dataset.preset;
   if (preset) setTarget(Number(preset));
+});
+
+els.gear.addEventListener('click', () => {
+  els.settings.hidden = !els.settings.hidden;
+  els.gear.classList.toggle('active', !els.settings.hidden);
+  els.gear.setAttribute('aria-expanded', String(!els.settings.hidden));
+});
+
+els.barPick.addEventListener('click', (e) => {
+  const weight = e.target.dataset.bar;
+  if (!weight) return;
+  state.bar = setBar(Number(weight));
+  state.target = snap(state.target); // the target can't sit below the new bar
+  save();
+  render();
 });
 
 els.modeToggle.addEventListener('click', (e) => {

@@ -3,7 +3,7 @@
 Tiny barbell calculator. Punch in the weight you want — see exactly what goes
 on each side, and (when the bar is already loaded) what to **add or remove**.
 
-- 45 lb bar
+- Bar weight configurable in Settings: **45** (default) / 35 / 25 / 15 lb
 - Plates per side: **45 / 25 / 10 / 5 / 2.5 lb**
 - Only loadable weights are reachable (5 lb steps); impossible numbers don't exist here
 - Remembers what's on the bar between sets and sessions (localStorage)
@@ -27,6 +27,9 @@ on each side, and (when the bar is already loaded) what to **add or remove**.
    each plan assumes you followed the previous one. **Loaded it ✓** confirms
    it; long-press the **On bar** pill resyncs to the target if someone else
    touched the bar.
+5. The gear (⚙) opens **Settings**: pick the bar weight (35 lb technique
+   bars included). Future config — like editing the plate inventory — lives
+   here too.
 
 ## Develop
 
