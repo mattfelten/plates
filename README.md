@@ -32,7 +32,7 @@ on each side, and (when the bar is already loaded) what to **add or remove**.
 
 ```sh
 npm install
-npm run dev     # astro dev with live reload at http://localhost:4321
+npm start       # dev server with live reload at http://localhost:4321
 npm test        # node --test for the plate math (public/plates.js)
 npm run build   # static output in dist/ — plain files, any host
 ```
