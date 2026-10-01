@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Plates">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Plates</title>
+<style>
+  :root {
+    --bg: #0b0e14;
+    --panel: #161c26;
+    --line: #232b38;
+    --text: #e6edf3;
+    --muted: #8b98a9;
+    --green: #3fb950;
+    --red: #f85149;
+    --accent: #2f81f7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+    min-height: 100dvh;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header { display: flex; justify-content: space-between; align-items: center; }
+  h1 {
+    font-size: 15px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .pill {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 14px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .pill b { color: var(--text); font-weight: 700; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  section[hidden] { display: none; }
+
+  .target { display: flex; flex-direction: column; align-items: center; }
+  .weight { display: flex; align-items: baseline; gap: 8px; }
+  #targetInput {
+    width: 4.2ch;
+    font: inherit; font-size: 76px; font-weight: 700; text-align: center;
+    font-variant-numeric: tabular-nums;
+    background: transparent; border: none; outline: none; color: var(--text);
+    appearance: textfield; -moz-appearance: textfield;
+    user-select: text; -webkit-user-select: text;
+    touch-action: manipulation;
+  }
+  #targetInput::-webkit-outer-spin-button,
+  #targetInput::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .unit { font-size: 20px; color: var(--muted); }
+  .formula { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+  .steppers { display: flex; gap: 8px; margin-top: 16px; width: 100%; }
+  button {
+    font: inherit; font-weight: 600; font-variant-numeric: tabular-nums;
+    border-radius: 12px; border: 1px solid var(--line);
+    background: #1f2733; color: var(--text);
+    min-height: 52px; padding: 0 8px; font-size: 17px;
+    flex: 1; min-width: 0;
+    touch-action: manipulation; cursor: pointer;
+  }
+  button:active { transform: scale(.96); background: #27313f; }
+  .steppers .neg { color: var(--red); }
+  .steppers .pos { color: var(--green); }
+
+  .presets { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+  .presets button { flex: 0 1 auto; min-height: 40px; padding: 0 16px; font-size: 15px; border-radius: 999px; }
+  .presets button.current { border-color: var(--accent); color: var(--accent); background: rgba(47,129,247,.12); }
+
+  .delta { display: flex; flex-direction: column; gap: 12px; }
+  .delta-label { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .chip {
+    border-radius: 10px; padding: 7px 14px;
+    font-size: 24px; font-weight: 700; border: 1.5px solid;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip.add { color: var(--green); border-color: var(--green); background: rgba(63,185,80,.08); }
+  .chip.remove { color: var(--red); border-color: var(--red); background: rgba(248,81,73,.08); }
+  .perSideNote { color: var(--muted); font-size: 13px; align-self: flex-start; }
+  #loadedBtn {
+    background: var(--green); color: #05230f; border: none;
+    font-size: 17px; font-weight: 700; width: 100%;
+  }
+  #loadedBtn:active { background: #46c257; }
+
+  .loadout .subtitle {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); text-align: center; margin-bottom: 12px;
+  }
+  #sleeve { display: flex; align-items: center; justify-content: center; min-height: 136px; }
+  #sleeve .rod { width: 34px; height: 10px; background: #39424f; border-radius: 3px; }
+  #sleeve .band { width: 5px; height: 34px; background: #39424f; border-radius: 2px; margin-left: 2px; }
+  #sleeve .plate {
+    display: flex; align-items: center; justify-content: center;
+    margin-left: 3px; border-radius: 6px;
+    font-size: 10px; font-weight: 700;
+    box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.22);
+  }
+  #plateText {
+    text-align: center; color: var(--muted); margin-top: 14px;
+    font-size: 15px; font-variant-numeric: tabular-nums;
+  }
+  footer { text-align: center; color: #576272; font-size: 12px; padding: 2px 0 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Plates</h1>
+  <button class="pill" id="onbar" style="min-height:0; font:inherit;">On bar <b>45</b></button>
+</header>
+
+<main style="display:flex; flex-direction:column; gap:14px;">
+  <section class="target">
+    <div class="weight">
+      <input id="targetInput" inputmode="numeric" autocomplete="off" aria-label="Target weight in pounds">
+      <span class="unit">lb</span>
+    </div>
+    <div class="formula" id="formulaLine"></div>
+    <div class="steppers" id="steppers">
+      <button class="neg" data-step="-25">&minus;25</button>
+      <button class="neg" data-step="-10">&minus;10</button>
+      <button class="neg" data-step="-5">&minus;5</button>
+      <button class="pos" data-step="5">+5</button>
+      <button class="pos" data-step="10">+10</button>
+      <button class="pos" data-step="25">+25</button>
+    </div>
+    <div class="presets" id="presets">
+      <button data-preset="45">45</button>
+      <button data-preset="95">95</button>
+      <button data-preset="135">135</button>
+      <button data-preset="185">185</button>
+      <button data-preset="225">225</button>
+    </div>
+  </section>
+
+  <section class="delta" id="deltaSection" hidden>
+    <div class="delta-label" id="deltaLabel"></div>
+    <div class="chips" id="deltaChips"></div>
+    <span class="perSideNote">per side</span>
+    <button id="loadedBtn">Loaded it &check;</button>
+  </section>
+
+  <section class="loadout">
+    <div class="subtitle">Each side</div>
+    <div id="sleeve"></div>
+    <div id="plateText"></div>
+  </section>
+</main>
+
+<footer>45 lb bar &middot; plates 45 / 25 / 10 / 5 / 2.5 &middot; long-press <b>On bar</b> to resync it</footer>
+
+<script type="module">
+import { BAR, isValid, snap, loadoutPerSide, delta, fmt } from './plates.js';
+
+const LS_KEY = '***';
+
+// Per-plate drawing geometry (px heights/widths, bumper-ish proportions)
+// and conventional colors: 45 blue, 25 green, 10 gray, 5 white, 2.5 red.
+const GEOMETRY = {
+  45:  { h: 120, w: 30, color: '#1d4ed8', text: '#fff' },
+  25:  { h: 100, w: 24, color: '#15803d', text: '#fff' },
+  10:  { h: 82,  w: 18, color: '#4b5563', text: '#fff' },
+  5:   { h: 64,  w: 14, color: '#e5e7eb', text: '#111' },
+  2.5: { h: 48,  w: 11, color: '#b91c1c', text: '#fff' },
+};
+
+const $ = (id) => document.getElementById(id);
+const els = {
+  onbar: $('onbar'),
+  input: $('targetInput'),
+  formula: $('formulaLine'),
+  steppers: $('steppers'),
+  presets: $('presets'),
+  deltaSection: $('deltaSection'),
+  deltaLabel: $('deltaLabel'),
+  deltaChips: $('deltaChips'),
+  loadedBtn: $('loadedBtn'),
+  sleeve: $('sleeve'),
+  plateText: $('plateText'),
+};
+
+function load() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_KEY));
+    if (saved && isValid(saved.target) && isValid(saved.onBar)) return saved;
+  } catch {}
+  return { onBar: BAR, target: 135 };
+}
+
+const state = load();
+const save = () => localStorage.setItem(LS_KEY, JSON.stringify(state));
+
+const el = (tag, cls) => { const n = document.createElement(tag); n.className = cls; return n; };
+function chip(kind, label) { const c = el('span', `chip ${kind}`); c.textContent = label; return c; }
+
+function setTarget(t) {
+  state.target = Math.max(BAR, snap(t));
+  save();
+  render();
+}
+
+function render() {
+  if (document.activeElement !== els.input) els.input.value = fmt(state.target);
+
+  const perSide = (state.target - BAR) / 2;
+  els.formula.textContent = perSide === 0
+    ? 'just the bar'
+    : `${BAR} bar + ${fmt(perSide)} × 2`;
+
+  els.onbar.innerHTML = `On bar <b>${fmt(state.onBar)}</b>`;
+
+  const d = delta(state.onBar, state.target);
+  if (d.perSide === 0) {
+    els.deltaSection.hidden = true;
+  } else {
+    els.deltaSection.hidden = false;
+    els.deltaLabel.textContent = `${fmt(state.onBar)} → ${fmt(state.target)}`;
+    els.deltaChips.textContent = '';
+    for (const p of d.added) els.deltaChips.append(chip('add', `+${fmt(p)}`));
+    for (const p of d.removed) els.deltaChips.append(chip('remove', `−${fmt(p)}`));
+  }
+
+  const loadout = loadoutPerSide(state.target);
+  els.sleeve.textContent = '';
+  els.sleeve.append(el('span', 'rod'), el('span', 'band'));
+  for (const p of loadout) {
+    const g = GEOMETRY[p];
+    const plate = el('span', 'plate');
+    plate.style.height = g.h + 'px';
+    plate.style.width = g.w + 'px';
+    plate.style.background = g.color;
+    plate.style.color = g.text;
+    if (g.w >= 14) plate.textContent = fmt(p);
+    els.sleeve.append(plate);
+  }
+  els.plateText.textContent = loadout.length
+    ? `${loadout.map(fmt).join(' + ')} = ${fmt(perSide)} per side`
+    : 'Empty bar';
+
+  for (const btn of els.presets.children) {
+    btn.classList.toggle('current', Number(btn.dataset.preset) === state.target);
+  }
+}
+
+els.steppers.addEventListener('click', (e) => {
+  const step = e.target.dataset.step;
+  if (step) setTarget(state.target + Number(step));
+});
+
+els.presets.addEventListener('click', (e) => {
+  const preset = e.target.dataset.preset;
+  if (preset) setTarget(Number(preset));
+});
+
+els.input.addEventListener('change', () => setTarget(parseFloat(els.input.value)));
+els.input.addEventListener('blur', () => setTarget(parseFloat(els.input.value)));
+els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') els.input.blur(); });
+
+els.loadedBtn.addEventListener('click', () => {
+  state.onBar = state.target;
+  save();
+  render();
+});
+
+// Long-press the On bar pill to resync it to the target (e.g. someone else
+// changed the bar and the app's memory of it is stale).
+let pressTimer;
+els.onbar.addEventListener('pointerdown', () => {
+  pressTimer = setTimeout(() => {
+    state.onBar = state.target;
+    save();
+    render();
+  }, 600);
+});
+for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) {
+  els.onbar.addEventListener(ev, () => clearTimeout(pressTimer));
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+render();
+</script>
+</body>
+</html>
