@@ -83,6 +83,6 @@ def render(size, path):
 
 
 if __name__ == '__main__':
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'public')
     render(180, os.path.join(out, 'icon-180.png'))
     render(512, os.path.join(out, 'icon-512.png'))

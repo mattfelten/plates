@@ -1,0 +1,17 @@
+{
+	"name": "plates",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Barbell plate calculator PWA — target weight to plates per side, with minimal swap plans",
+	"scripts": {
+		"dev": "astro dev",
+		"start": "astro dev",
+		"build": "astro build",
+		"preview": "astro preview",
+		"test": "node --test"
+	},
+	"devDependencies": {
+		"astro": "^7.1.3"
+	}
+}

@@ -1,3 +1,8 @@
+---
+// Plates — barbell plate calculator. The page is intentionally framework-free:
+// one module script + static assets in public/, so the same files run in
+// astro dev, a production build, or any dumb static host.
+---
 <!doctype html>
 <html lang="en">
 <head>
@@ -11,7 +16,7 @@
 <link rel="icon" href="icon-512.png">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Plates</title>
-<style>
+<style is:global>
   :root {
     --bg: #0b0e14;
     --panel: #161c26;
@@ -67,7 +72,6 @@
   #targetInput::-webkit-outer-spin-button,
   #targetInput::-webkit-inner-spin-button { -webkit-appearance: none; }
   .unit { font-size: 20px; color: var(--muted); }
-  .formula { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
 
   .steppers { display: flex; gap: 8px; margin-top: 16px; width: 100%; }
   button {
@@ -103,6 +107,17 @@
   }
   #loadedBtn:active { background: #46c257; }
 
+  .modeToggle {
+    display: flex; gap: 4px; background: #0f1420;
+    border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin-bottom: 14px;
+  }
+  .modeToggle[hidden] { display: none; }
+  .mode-btn {
+    flex: 1; min-height: 38px; font-size: 14px; font-weight: 600;
+    color: var(--muted); background: transparent; border: none; border-radius: 9px;
+  }
+  .mode-btn.active { background: #2a3444; color: var(--text); }
+
   .loadout .subtitle {
     font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
     color: var(--muted); text-align: center; margin-bottom: 12px;
@@ -132,10 +147,6 @@
     color: var(--muted); font-size: 12px; margin-top: 10px; text-align: center;
     font-variant-numeric: tabular-nums;
   }
-  #plateText {
-    text-align: center; color: var(--muted); margin-top: 14px;
-    font-size: 15px; font-variant-numeric: tabular-nums;
-  }
   footer { text-align: center; color: #576272; font-size: 12px; padding: 2px 0 6px; }
 </style>
 </head>
@@ -151,7 +162,6 @@
       <input id="targetInput" inputmode="numeric" autocomplete="off" aria-label="Target weight in pounds">
       <span class="unit">lb</span>
     </div>
-    <div class="formula" id="formulaLine"></div>
     <div class="steppers" id="steppers">
       <button class="neg" data-step="-25">&minus;25</button>
       <button class="neg" data-step="-10">&minus;10</button>
@@ -176,10 +186,13 @@
   </section>
 
   <section class="loadout">
-    <div class="subtitle">Each side</div>
+    <div class="modeToggle" id="modeToggle" hidden>
+      <button class="mode-btn" data-mode="clean">Clean</button>
+      <button class="mode-btn" data-mode="quick">Quick</button>
+    </div>
     <div id="loadoutSingle">
+      <div class="subtitle">Each side</div>
       <div class="sleeve" id="sleeve"></div>
-      <div id="plateText"></div>
     </div>
     <div id="loadoutCompare" hidden>
       <div class="compare">
@@ -203,13 +216,14 @@
 
 <footer>45 lb bar &middot; plates 45 / 25 / 10 / 5 / 2.5 &middot; long-press <b>On bar</b> to resync it</footer>
 
-<script type="module">
+<script is:inline type="module">
 import { BAR, PLATES, isValid, snap, loadoutPerSide, planSwap, totalFor, fmt } from './plates.js';
 
 const LS_KEY = '***';
 
 // Per-plate drawing geometry (px heights/widths, bumper-ish proportions)
-// and conventional colors: 45 blue, 25 green, 10 gray, 5 white, 2.5 red.
+// and colors: 45 blue, 25 green, 10 gray, 5 white, 2.5 purple.
+// Removed plates are drawn solid red regardless of size.
 const GEOMETRY = {
   45:  { h: 120, w: 30, color: '#1d4ed8', text: '#fff' },
   25:  { h: 100, w: 24, color: '#15803d', text: '#fff' },
@@ -222,17 +236,16 @@ const $ = (id) => document.getElementById(id);
 const els = {
   onbar: $('onbar'),
   input: $('targetInput'),
-  formula: $('formulaLine'),
   steppers: $('steppers'),
   presets: $('presets'),
   deltaSection: $('deltaSection'),
   deltaLabel: $('deltaLabel'),
   deltaChips: $('deltaChips'),
   loadedBtn: $('loadedBtn'),
+  modeToggle: $('modeToggle'),
   loadoutSingle: $('loadoutSingle'),
   loadoutCompare: $('loadoutCompare'),
   sleeve: $('sleeve'),
-  plateText: $('plateText'),
   outerBefore: $('outerBefore'),
   sleeveBefore: $('sleeveBefore'),
   outerAfter: $('outerAfter'),
@@ -244,18 +257,26 @@ const els = {
 const byDesc = (a, b) => b - a;
 
 function load() {
+  const seeded = { onBarLayout: loadoutPerSide(135), target: 135, mode: 'clean' };
   try {
     const saved = JSON.parse(localStorage.getItem(LS_KEY));
     if (saved && isValid(saved.target)) {
+      let onBarLayout = null;
       if (Array.isArray(saved.onBarLayout) && saved.onBarLayout.every((p) => PLATES.includes(p))) {
-        return { onBarLayout: saved.onBarLayout.slice().sort(byDesc), target: saved.target };
+        onBarLayout = saved.onBarLayout.slice().sort(byDesc);
+      } else if (isValid(saved.onBar)) { // v1 saved the bar as a weight; assume it was greedily loaded
+        onBarLayout = loadoutPerSide(saved.onBar);
       }
-      if (isValid(saved.onBar)) { // v1 saved the bar as a weight; assume it was greedily loaded
-        return { onBarLayout: loadoutPerSide(saved.onBar), target: saved.target };
+      if (onBarLayout) {
+        return {
+          onBarLayout,
+          target: saved.target,
+          mode: saved.mode === 'quick' ? 'quick' : 'clean',
+        };
       }
     }
   } catch {}
-  return { onBarLayout: loadoutPerSide(135), target: 135 };
+  return seeded;
 }
 
 const state = load();
@@ -308,35 +329,37 @@ function drawMini(outer, sleeve, plates, mark = { remove: {} }) {
 
 function layoutText(plates) {
   if (!plates.length) return 'Just the bar';
-  const sum = plates.reduce((a, b) => a + b, 0);
-  return `${plates.map(fmt).join(' + ')} = ${fmt(sum)}`;
+  return `${fmt(plates.reduce((a, b) => a + b, 0))} lb`;
 }
 
 function render() {
   if (document.activeElement !== els.input) els.input.value = fmt(state.target);
 
-  const perSide = (state.target - BAR) / 2;
-  els.formula.textContent = perSide === 0
-    ? 'just the bar'
-    : `${BAR} bar + ${fmt(perSide)} × 2`;
-
   const onBarWeight = totalFor(state.onBarLayout);
   els.onbar.innerHTML = `On bar <b>${fmt(onBarWeight)}</b>`;
 
-  const plan = planSwap(state.onBarLayout, state.target);
-  els.loadedBtn.hidden = plan.perSide === 0;
+  const clean = planSwap(state.onBarLayout, state.target, 'clean');
+  const quick = planSwap(state.onBarLayout, state.target, 'quick');
+  const plan = state.mode === 'quick' ? quick : clean;
+  const active = plan.removed.length > 0 || plan.added.length > 0;
 
-  if (plan.perSide === 0) {
+  const sig = (p) => `${p.removed.join(',')}|${p.added.join(',')}`;
+  els.modeToggle.hidden = sig(clean) === sig(quick);
+  for (const btn of els.modeToggle.children) {
+    btn.classList.toggle('active', btn.dataset.mode === state.mode);
+  }
+  els.loadedBtn.hidden = !active;
+
+  if (!active) {
     els.deltaSection.hidden = true;
     els.loadoutSingle.hidden = false;
     els.loadoutCompare.hidden = true;
     drawSleeve(els.sleeve, state.onBarLayout);
-    els.plateText.textContent = state.onBarLayout.length
-      ? `${state.onBarLayout.map(fmt).join(' + ')} = ${fmt(perSide)} per side`
-      : 'Empty bar';
   } else {
     els.deltaSection.hidden = false;
-    els.deltaLabel.textContent = `${fmt(onBarWeight)} → ${fmt(state.target)}`;
+    els.deltaLabel.textContent = plan.perSide === 0
+      ? 'same weight, cleaner bar'
+      : `${fmt(onBarWeight)} → ${fmt(state.target)}`;
     els.deltaChips.textContent = '';
     for (const p of plan.removed) els.deltaChips.append(chip('remove', `−${fmt(p)}`));
     for (const p of plan.added) els.deltaChips.append(chip('add', `+${fmt(p)}`));
@@ -364,12 +387,21 @@ els.presets.addEventListener('click', (e) => {
   if (preset) setTarget(Number(preset));
 });
 
+els.modeToggle.addEventListener('click', (e) => {
+  const mode = e.target.dataset.mode;
+  if (mode) {
+    state.mode = mode;
+    save();
+    render();
+  }
+});
+
 els.input.addEventListener('change', () => setTarget(parseFloat(els.input.value)));
 els.input.addEventListener('blur', () => setTarget(parseFloat(els.input.value)));
 els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') els.input.blur(); });
 
 els.loadedBtn.addEventListener('click', () => {
-  state.onBarLayout = planSwap(state.onBarLayout, state.target).result;
+  state.onBarLayout = planSwap(state.onBarLayout, state.target, state.mode).result;
   save();
   render();
 });

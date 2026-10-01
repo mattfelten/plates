@@ -28,7 +28,9 @@ export function snap(target) {
   return Math.max(BAR, BAR + Math.round((target - BAR) / STEP) * STEP);
 }
 
-/** Greedy fill of `h` half-pounds with the plate set. */
+/** Greedy fill of `h` half-pounds with the plate set. Exact whenever h is
+ *  a multiple of 5 (half-pounds of the 2.5 lb plate), which it always is
+ *  for loadable weights. */
 function takeHalf(h) {
   const out = [];
   for (const plate of PLATES) {
@@ -38,9 +40,7 @@ function takeHalf(h) {
       h -= ph;
     }
   }
-  return out; // h hits 0 for any non-negative integer (smallest plate = 1 half... see note)
-  // Note: smallest plate is 2.5 lb = 5 half-pounds, so this is exact whenever
-  // h is a multiple of 5 — which it always is for valid weights.
+  return out;
 }
 
 /** Greedy fewest-plates load for `perSide` pounds on one sleeve. */
@@ -60,28 +60,55 @@ export function totalFor(plates) {
 
 const desc = (a, b) => b - a;
 
+/** Multiset difference: entries of `a` not matched by entries of `b`. */
+function minus(a, b) {
+  const pool = [...b];
+  const out = [];
+  for (const x of a) {
+    const i = pool.indexOf(x);
+    if (i < 0) out.push(x);
+    else pool.splice(i, 1);
+  }
+  return out;
+}
+
 /**
- * Plan the swap from the bar's ACTUAL per-side layout `current` to `target`.
+ * Plan the swap from the bar's ACTUAL per-side layout `current` to `target`,
+ * under one of two strategies:
  *
- * Weight-only deltas lie at the bar: going 185 -> 180 means "remove 2.5 per
- * side", but a [45, 25] bar has no 2.5 to remove. So we enumerate which
- * plates to pull off (all subsets of what's on the bar) and greedily fill
- * whatever must be added back, minimizing total plates handled — then ties
- * go to touching fewer of the plates already on.
+ * 'clean' (default) — land on the tidy big-plate-first layout the bar would
+ * have if you loaded it fresh. 140 -> 145 swaps the 2.5 for a 5, so the bar
+ * always matches the picture.
  *
- * Returns { perSide, removed, added, result }: the signed per-side change,
- * what to pull, what to slide on, and the resulting layout (sorted desc).
+ * 'quick' — handle the fewest plates. Enumerate every subset to pull,
+ * greedily refill what must go back, minimize plates touched (ties leave the
+ * heavier plates on). 140 -> 145 just slides on a second 2.5.
+ *
+ * Returns { perSide, removed, added, result } or null for an impossible
+ * target: the signed per-side change, what to pull, what to add, and the
+ * resulting layout (sorted desc).
  */
-export function planSwap(current, target) {
+export function planSwap(current, target, mode = 'clean') {
   if (!isValid(target)) return null;
-  const curHalf = current.reduce((s, p) => s + half(p), 0);
-  const diffHalf = half((target - BAR) / 2) - curHalf; // signed, per side
-  if (diffHalf === 0) {
+  const targetLayout = loadoutPerSide(target);
+  const perSide = (target - BAR) / 2 - current.reduce((s, p) => s + p, 0);
+
+  if (mode !== 'quick') {
+    return {
+      perSide,
+      removed: minus(current, targetLayout).sort(desc),
+      added: minus(targetLayout, current),
+      result: [...targetLayout],
+    };
+  }
+
+  if (perSide === 0) {
     return { perSide: 0, removed: [], added: [], result: [...current].sort(desc) };
   }
 
   const n = current.length;
   const plateHalf = current.map(half);
+  const diffHalf = half(perSide);
   let best = null;
   for (let mask = 0; mask < 1 << n; mask++) {
     let pullHalf = 0;
@@ -92,7 +119,7 @@ export function planSwap(current, target) {
         pullCount++;
       }
     }
-    const addHalf = diffHalf + pullHalf; // must be >= 0
+    const addHalf = diffHalf + pullHalf; // refill needed, half-pounds
     if (addHalf < 0) continue;
     const added = takeHalf(addHalf);
     const cost = pullCount + added.length;
@@ -107,7 +134,7 @@ export function planSwap(current, target) {
     ((best.mask >> i) & 1 ? removed : kept).push(current[i]);
   }
   return {
-    perSide: diffHalf / 2,
+    perSide,
     removed: removed.sort(desc),
     added: best.added,
     result: [...kept, ...best.added].sort(desc),
